@@ -48,3 +48,4 @@ export function getBody(req) {
   }
   return req.body || {};
 }
+// deploy: 2026-06-27T20:57:54Z - aplicar INTERNAL_API_KEY
