@@ -94,49 +94,51 @@ function Dashboard({ onGoPipeline }) {
   }
   if (!data) return <div className="empty"><h4>No se pudo cargar el panel</h4><p>Revisa la conexión con el servidor.</p></div>;
 
-  const m = data.metricas || {};
-  const porEtapa = data.por_etapa || {};
+  // El backend devuelve: { total, hot, pipeline, scorePromedio, tasaConversion, stages, servicios, ... }
+  const total = data.total ?? 0;
+  const stages = data.stages || {};
+  const servicios = data.servicios || {};
+  const topServicios = Object.entries(servicios).sort((a, b) => b[1] - a[1]).slice(0, 6);
 
   return (
     <>
       <div className="metrics-row">
         <div className="metric accent">
           <div className="label">Total de clientes</div>
-          <div className="value tnum">{m.total_clientes ?? 0}</div>
+          <div className="value tnum">{total}</div>
           <div className="sub">en tu cartera</div>
         </div>
         <div className="metric">
           <div className="label">Leads calientes</div>
-          <div className="value tnum" style={{ color: 'var(--lime)' }}>{m.leads_calientes ?? 0}</div>
-          <div className="sub">score ≥ 60</div>
+          <div className="value tnum" style={{ color: 'var(--lime)' }}>{data.hot ?? 0}</div>
+          <div className="sub">score ≥ 70 o urgencia alta</div>
         </div>
         <div className="metric">
-          <div className="label">Citas agendadas</div>
-          <div className="value tnum">{m.citas ?? 0}</div>
-          <div className="sub">próximas reuniones</div>
+          <div className="label">Tasa de conversión</div>
+          <div className="value tnum">{data.tasaConversion ?? 0}%</div>
+          <div className="sub">ganados / cerrados</div>
         </div>
         <div className="metric">
           <div className="label">Lead score promedio</div>
-          <div className="value tnum">{m.score_promedio ?? 0}</div>
+          <div className="value tnum">{data.scorePromedio ?? 0}</div>
           <div className="sub">de 100</div>
         </div>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: '1.4fr 1fr', gap: 16 }}>
+      <div className="dash-grid" style={{ display: 'grid', gridTemplateColumns: '1.4fr 1fr', gap: 16 }}>
         <div className="card" style={{ padding: 22 }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 18 }}>
             <h3 className="font-display" style={{ fontSize: 17 }}>Embudo de ventas</h3>
             <button className="btn btn-dark" style={{ padding: '7px 14px', fontSize: 13 }} onClick={onGoPipeline}>Ver pipeline →</button>
           </div>
           {ETAPAS.map(et => {
-            const n = porEtapa[et.id] || 0;
-            const total = m.total_clientes || 1;
-            const pct = Math.round((n / total) * 100);
+            const n = stages[et.id] || 0;
+            const pct = total ? Math.round((n / total) * 100) : 0;
             return (
               <div key={et.id} style={{ marginBottom: 13 }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, marginBottom: 5 }}>
                   <span>{et.label}</span>
-                  <span className="mist tnum" style={{ color: 'var(--mist)' }}>{n}</span>
+                  <span className="tnum" style={{ color: 'var(--mist)' }}>{n}</span>
                 </div>
                 <div style={{ height: 7, background: 'var(--surface)', borderRadius: 99, overflow: 'hidden' }}>
                   <div style={{ width: `${pct}%`, height: '100%', background: et.color, borderRadius: 99, transition: 'width 0.5s' }} />
@@ -148,11 +150,11 @@ function Dashboard({ onGoPipeline }) {
 
         <div className="card" style={{ padding: 22 }}>
           <h3 className="font-display" style={{ fontSize: 17, marginBottom: 18 }}>Servicios de interés</h3>
-          {(data.top_servicios || []).length === 0 && <p style={{ color: 'var(--mist)', fontSize: 13 }}>Aún sin datos suficientes.</p>}
-          {(data.top_servicios || []).map((s, i) => (
-            <div key={i} style={{ display: 'flex', justifyContent: 'space-between', padding: '10px 0', borderBottom: i < data.top_servicios.length - 1 ? '1px solid var(--line)' : 'none' }}>
-              <span style={{ fontSize: 13.5 }}>{s.servicio || 'Sin especificar'}</span>
-              <span className="pill" style={{ background: 'var(--lime-dim)', color: 'var(--lime)' }}>{s.count}</span>
+          {topServicios.length === 0 && <p style={{ color: 'var(--mist)', fontSize: 13 }}>Aún sin datos suficientes.</p>}
+          {topServicios.map(([servicio, count], i) => (
+            <div key={i} style={{ display: 'flex', justifyContent: 'space-between', padding: '10px 0', borderBottom: i < topServicios.length - 1 ? '1px solid var(--line)' : 'none' }}>
+              <span style={{ fontSize: 13.5 }}>{servicio || 'Sin especificar'}</span>
+              <span className="pill" style={{ background: 'var(--lime-dim)', color: 'var(--lime)' }}>{count}</span>
             </div>
           ))}
         </div>
