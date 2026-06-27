@@ -1,0 +1,14 @@
+{
+  "name": "ocean-crm",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "cd frontend && npm install && npm run build"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.108.2",
+    "bcryptjs": "^2.4.3",
+    "jsonwebtoken": "^9.0.3"
+  }
+}
