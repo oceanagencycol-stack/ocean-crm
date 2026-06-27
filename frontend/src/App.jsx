@@ -545,8 +545,8 @@ function WhatsAppWeb() {
   return (
     <>
       <div className="topbar"><h1 className="page-title font-display">Conversaciones</h1></div>
-      <div className="wa-layout">
-        <div className={`wa-list ${activo ? '' : 'show-mobile'}`}>
+      <div className={`wa-layout ${activo ? 'chat-abierto' : ''}`}>
+        <div className="wa-list">
           {loading ? (
             [1, 2, 3, 4, 5].map(i => <div key={i} style={{ padding: 16 }}><div className="skeleton" style={{ height: 40 }} /></div>)
           ) : convos.length === 0 ? (
@@ -565,13 +565,13 @@ function WhatsAppWeb() {
           ))}
         </div>
 
-        <div className={`wa-chat ${activo ? '' : 'hide-mobile'}`}>
+        <div className="wa-chat">
           {!activo ? (
             <div className="empty" style={{ margin: 'auto' }}><h4>Selecciona una conversación</h4><p>Tus chats de WhatsApp con clientes, en un solo lugar.</p></div>
           ) : (
             <>
               <div className="wa-chat-head">
-                <button className="btn btn-ghost" style={{ padding: 6, display: 'none' }} onClick={() => setActivo(null)}>←</button>
+                <button className="btn btn-ghost wa-back" style={{ padding: '6px 10px' }} onClick={() => setActivo(null)}>←</button>
                 <div className="avatar" style={{ width: 40, height: 40 }}>{iniciales(activo.nombre)}</div>
                 <div style={{ flex: 1 }}>
                   <div style={{ fontWeight: 600 }}>{activo.nombre || 'Sin nombre'}</div>

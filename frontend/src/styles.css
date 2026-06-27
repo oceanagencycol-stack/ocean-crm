@@ -206,7 +206,10 @@ label.field > span { display: block; font-size: 12px; color: var(--mist); margin
 .detail-row .k { color: var(--mist); }
 .detail-row .v { color: var(--ink); text-align: right; font-weight: 500; }
 
+.wa-back { display: none; }
+
 @media (max-width: 980px) {
+  .wa-back { display: inline-flex !important; }
   .app { grid-template-columns: 1fr; }
   .sidebar { position: fixed; bottom: 0; left: 0; right: 0; top: auto; height: auto; flex-direction: row; z-index: 50; border-right: none; border-top: 1px solid var(--line); padding: 8px; gap: 2px; overflow-x: auto; }
   .brand, .sidebar-foot { display: none; }
@@ -215,7 +218,9 @@ label.field > span { display: block; font-size: 12px; color: var(--mist); margin
   .main { padding: 18px 16px 100px; }
   .page-title { font-size: 24px; }
   .wa-layout { grid-template-columns: 1fr; }
-  .wa-list { display: none; }
-  .wa-list.show-mobile { display: block; }
-  .wa-chat.hide-mobile { display: none; }
+  .wa-list { display: block; }
+  .wa-chat { display: none; }
+  /* Cuando hay un chat abierto en móvil: ocultar lista, mostrar chat */
+  .wa-layout.chat-abierto .wa-list { display: none; }
+  .wa-layout.chat-abierto .wa-chat { display: flex; }
 }
