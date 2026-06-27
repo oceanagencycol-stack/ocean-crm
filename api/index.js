@@ -63,6 +63,7 @@ export default async function handler(req, res) {
       const { data, error } = await supabase
         .from('clientes')
         .select('*')
+        .neq('origen', '_sistema_asistente')
         .order('ultima_interaccion', { ascending: false, nullsFirst: false });
       if (error) return res.status(500).json({ error: error.message });
       return res.json(data || []);
@@ -137,22 +138,44 @@ export default async function handler(req, res) {
     if (route === 'dashboard' && method === 'GET') {
       const { data: clients, error } = await supabase
         .from('clientes')
-        .select('etapa, kanban, lead_score, servicio_interes, presupuesto, urgencia, sector, origen, created_at, ultima_interaccion');
+        .select('etapa, kanban, lead_score, servicio_interes, presupuesto, urgencia, sector, origen, created_at, ultima_interaccion')
+        .neq('origen', '_sistema_asistente');
       if (error) return res.status(500).json({ error: error.message });
 
       const stages = {}; const servicios = {}; const sectores = {}; const origenes = {};
       let hot = 0; let pipeline = 0; let pipelineGanado = 0; let sumScore = 0;
       const now = Date.now();
       let nuevos7d = 0;
+      // Normaliza etapa/kanban a un id de stage canonico
+      const aliasStage = {
+        nuevo: 'interactuando', interactuando: 'interactuando', interesado: 'interactuando',
+        contactado: 'contactado', calificado: 'calificado', cualificado: 'calificado',
+        propuesta: 'propuesta', cotizacion: 'propuesta', negociacion: 'negociacion',
+        ganado: 'ganado', cerrado: 'ganado', cliente: 'ganado', perdido: 'perdido', descartado: 'perdido'
+      };
+      // Parsea presupuesto en texto libre a un número en COP (maneja "2 millones", "2M", "2.000.000")
+      const parsePresupuesto = (txt) => {
+        if (!txt) return 0;
+        const s = String(txt).toLowerCase().trim();
+        // Extraer el primer número (puede tener . o , como separador)
+        const m = s.match(/[\d.,]+/);
+        if (!m) return 0;
+        let num = parseFloat(m[0].replace(/\.(?=\d{3})/g, '').replace(',', '.')) || 0;
+        // Multiplicadores
+        if (/mill|\bm\b|millon/.test(s)) num *= 1_000_000;
+        else if (/\bk\b|mil/.test(s) && num < 1000) num *= 1000;
+        return Math.round(num);
+      };
       (clients || []).forEach(c => {
-        const st = c.kanban || c.etapa || 'nuevo';
+        const raw = (c.kanban || c.etapa || 'nuevo').toLowerCase();
+        const st = aliasStage[raw] || 'interactuando';
         stages[st] = (stages[st] || 0) + 1;
         if (c.servicio_interes) servicios[c.servicio_interes] = (servicios[c.servicio_interes] || 0) + 1;
         if (c.sector) sectores[c.sector] = (sectores[c.sector] || 0) + 1;
         if (c.origen) origenes[c.origen] = (origenes[c.origen] || 0) + 1;
         if ((c.lead_score || 0) >= 70 || c.urgencia === 'alta') hot++;
         sumScore += (c.lead_score || 0);
-        const val = parseInt(String(c.presupuesto || '').replace(/\D/g, '')) || 0;
+        const val = parsePresupuesto(c.presupuesto);
         if (st === 'ganado') pipelineGanado += val; else pipeline += val;
         if (c.created_at && (now - new Date(c.created_at).getTime()) < 7 * 864e5) nuevos7d++;
       });
@@ -246,6 +269,7 @@ Máximo 3 elementos en prioridades, 2 en riesgos, 2 en oportunidades. Usa los no
       const { data: clientes, error: ecli } = await supabase
         .from('clientes')
         .select('id, nombre, telefono, lead_score, kanban, etapa, ultima_interaccion')
+        .neq('origen', '_sistema_asistente')
         .order('ultima_interaccion', { ascending: false, nullsFirst: false });
       if (ecli) return res.status(500).json({ error: ecli.message });
 
@@ -404,6 +428,7 @@ Máximo 3 elementos en prioridades, 2 en riesgos, 2 en oportunidades. Usa los no
       const { data: clientes } = await supabase
         .from('clientes')
         .select('nombre, telefono, sector, servicio_interes, necesidad, presupuesto, lead_score, kanban, etapa, ubicacion, ultima_interaccion')
+        .neq('origen', '_sistema_asistente')
         .order('ultima_interaccion', { ascending: false, nullsFirst: false })
         .limit(50);
 
@@ -457,6 +482,7 @@ Reglas:
       const { data: clientes, error } = await supabase
         .from('clientes')
         .select('id, nombre, telefono, lead_score, etapa, kanban, necesidad, ultima_interaccion')
+        .neq('origen', '_sistema_asistente')
         .order('ultima_interaccion', { ascending: true, nullsFirst: true });
       if (error) return res.status(500).json({ error: error.message });
       const ahora = Date.now();

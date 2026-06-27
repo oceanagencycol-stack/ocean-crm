@@ -11,9 +11,22 @@ const ETAPAS = [
   { id: 'ganado', label: 'Ganado', color: '#25d366' },
   { id: 'perdido', label: 'Perdido', color: '#ff6b6b' },
 ];
+// Mapa de sinónimos de etapa → id del kanban (Valeria usa 'nuevo', etc.)
+const ETAPA_ALIAS = {
+  nuevo: 'interactuando', interactuando: 'interactuando', interesado: 'interactuando',
+  contactado: 'contactado',
+  calificado: 'calificado', cualificado: 'calificado',
+  propuesta: 'propuesta', cotizacion: 'propuesta',
+  negociacion: 'negociacion', 'negociación': 'negociacion',
+  ganado: 'ganado', cerrado: 'ganado', cliente: 'ganado',
+  perdido: 'perdido', descartado: 'perdido',
+};
 function etapaDe(c) {
-  const k = (c.kanban || c.etapa || 'interactuando').toLowerCase();
-  return ETAPAS.find(e => e.id === k) ? k : 'interactuando';
+  // Prioriza kanban si es un id válido; si no, traduce etapa vía alias
+  const k = (c.kanban || '').toLowerCase();
+  if (ETAPAS.find(e => e.id === k)) return k;
+  const e = (c.etapa || '').toLowerCase();
+  return ETAPA_ALIAS[e] || 'interactuando';
 }
 function etapaInfo(id) { return ETAPAS.find(e => e.id === id) || ETAPAS[0]; }
 function urgColor(u) {
