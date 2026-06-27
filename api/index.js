@@ -45,7 +45,12 @@ export default async function handler(req, res) {
     }
 
     // ── A partir de aquí requiere auth ──
-    const session = verifyAuth(req);
+    // Excepción: el envío validado de WhatsApp acepta una API key interna (para que Valeria/n8n lo use)
+    const internalKey = process.env.INTERNAL_API_KEY;
+    const isInternalCall = internalKey && req.headers['x-internal-key'] === internalKey
+      && route === 'whatsapp/enviar-validado';
+
+    const session = isInternalCall ? { id: 'valeria', rol: 'agente', email: 'valeria@ocean' } : verifyAuth(req);
     if (!session) return res.status(401).json({ error: 'No autorizado' });
 
     // ── PERFIL ──
@@ -317,6 +322,75 @@ Máximo 3 elementos en prioridades, 2 en riesgos, 2 en oportunidades. Usa los no
         return res.json({ ok: true, enviado_a: numero, evolution: evoData.key ? evoData.key.id : null });
       } catch (e) {
         return res.status(502).json({ error: 'No se pudo conectar con Evolution: ' + e.message });
+      }
+    }
+
+    // ── ENVIAR validado: verifica que el número pertenece a un cliente y el nombre coincide ──
+    // Diseñado para que Valeria NO pueda enviar a números inventados o a la persona equivocada.
+    if (route === 'whatsapp/enviar-validado' && method === 'POST') {
+      const { telefono, nombre_esperado, mensaje } = getBody(req);
+      if (!telefono || !mensaje) {
+        return res.status(400).json({ error: 'Faltan datos', enviado: false, instruccion: 'Necesitas telefono y mensaje.' });
+      }
+      const num = String(telefono).replace(/\D/g, '');
+      // Buscar el cliente por teléfono en el CRM
+      const { data: cli } = await supabase
+        .from('clientes')
+        .select('id, nombre, telefono')
+        .eq('telefono', num)
+        .maybeSingle();
+
+      if (!cli) {
+        return res.json({
+          enviado: false,
+          motivo: 'numero_no_existe',
+          instruccion: `El numero ${num} NO corresponde a ningun cliente en el CRM. NO se envio nada. Verifica el numero con consultar_crm o pregunta a Juan a quien exactamente quiere escribir.`
+        });
+      }
+
+      // Si se dio un nombre esperado, validar que coincide con el cliente real
+      if (nombre_esperado) {
+        const real = (cli.nombre || '').toLowerCase().trim();
+        const esperado = String(nombre_esperado).toLowerCase().trim();
+        // Coincidencia flexible: uno contiene al otro (maneja "Lau" vs "Lau Castro")
+        const coincide = real.includes(esperado) || esperado.includes(real) ||
+                         real.split(/\s+/)[0] === esperado.split(/\s+/)[0];
+        if (!coincide) {
+          return res.json({
+            enviado: false,
+            motivo: 'nombre_no_coincide',
+            cliente_real: cli.nombre,
+            instruccion: `ALTO: el numero ${num} pertenece a "${cli.nombre}", NO a "${nombre_esperado}". NO se envio nada para evitar escribirle a la persona equivocada. Confirma con Juan: ¿queria escribirle a ${cli.nombre}? Si es otra persona, busca su numero correcto con consultar_crm.`
+          });
+        }
+      }
+
+      // Pasó la validación: enviar
+      const EVO_URL = process.env.EVOLUTION_URL || 'http://178.156.183.173';
+      const EVO_KEY = process.env.EVOLUTION_API_KEY;
+      const EVO_INSTANCE = process.env.EVOLUTION_INSTANCE || 'ocean-comercial';
+      if (!EVO_KEY) return res.status(500).json({ enviado: false, error: 'Falta EVOLUTION_API_KEY en el entorno' });
+
+      try {
+        const evoResp = await fetch(`${EVO_URL}/message/sendText/${EVO_INSTANCE}`, {
+          method: 'POST',
+          headers: { 'apikey': EVO_KEY, 'Content-Type': 'application/json' },
+          body: JSON.stringify({ number: num, text: mensaje })
+        });
+        const evoData = await evoResp.json().catch(() => ({}));
+        if (!evoResp.ok) {
+          return res.status(502).json({ enviado: false, error: 'Evolution rechazo el envio', detalle: evoData });
+        }
+        await supabase.from('mensajes').insert({ cliente_id: cli.id, rol: 'agente', contenido: mensaje, canal: 'whatsapp' });
+        await supabase.from('clientes').update({ ultima_interaccion: new Date().toISOString() }).eq('id', cli.id);
+        return res.json({
+          enviado: true,
+          cliente: cli.nombre,
+          telefono: num,
+          confirmacion: `Mensaje enviado correctamente a ${cli.nombre} (${num}).`
+        });
+      } catch (e) {
+        return res.status(502).json({ enviado: false, error: 'No se pudo conectar con Evolution: ' + e.message });
       }
     }
 
