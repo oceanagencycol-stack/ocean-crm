@@ -706,7 +706,7 @@ function Campanas() {
     <>
       <div className="topbar"><h1 className="page-title font-display">Campañas</h1></div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: '1.3fr 1fr', gap: 16 }}>
+      <div className="split-grid" style={{ display: 'grid', gridTemplateColumns: '1.3fr 1fr', gap: 16 }}>
         <div className="card" style={{ padding: 24 }}>
           <h3 className="font-display" style={{ fontSize: 17, marginBottom: 6 }}>Nueva campaña masiva</h3>
           <p style={{ color: 'var(--mist)', fontSize: 13, marginBottom: 20 }}>
