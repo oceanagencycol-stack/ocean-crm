@@ -676,6 +676,109 @@ function Inteligencia() {
   );
 }
 
+/* ───────────── Campañas masivas ───────────── */
+function Campanas() {
+  const [tema, setTema] = useState('');
+  const [limite, setLimite] = useState(5);
+  const [enviando, setEnviando] = useState(false);
+  const [resultado, setResultado] = useState(null);
+  const [err, setErr] = useState('');
+  const [clientes, setClientes] = useState([]);
+
+  useEffect(() => { api.clientes().then(setClientes).catch(() => {}); }, []);
+
+  async function lanzar() {
+    if (!tema.trim()) { setErr('Escribe el tema de la campaña'); return; }
+    setEnviando(true); setErr(''); setResultado(null);
+    try {
+      const r = await api.lanzarCampana({ tema: tema.trim(), limite: Number(limite) });
+      setResultado(r);
+    } catch (e) {
+      setErr(e.message || 'No se pudo lanzar la campaña');
+    } finally { setEnviando(false); }
+  }
+
+  // Hora actual Colombia para mostrar si está en horario
+  const horaCol = (new Date().getUTCHours() - 5 + 24) % 24;
+  const enHorario = horaCol >= 8 && horaCol < 20;
+
+  return (
+    <>
+      <div className="topbar"><h1 className="page-title font-display">Campañas</h1></div>
+
+      <div style={{ display: 'grid', gridTemplateColumns: '1.3fr 1fr', gap: 16 }}>
+        <div className="card" style={{ padding: 24 }}>
+          <h3 className="font-display" style={{ fontSize: 17, marginBottom: 6 }}>Nueva campaña masiva</h3>
+          <p style={{ color: 'var(--mist)', fontSize: 13, marginBottom: 20 }}>
+            Valeria contactará a tus clientes uno por uno, con un mensaje único generado para cada quien según el tema. Envía con pausas para cuidar el número.
+          </p>
+
+          <label className="field">
+            <span>Tema de la campaña</span>
+            <textarea
+              className="textarea" style={{ minHeight: 90, resize: 'vertical' }}
+              value={tema} onChange={e => setTema(e.target.value)}
+              placeholder="Ej: Retomar contacto e invitarlos a conocer cómo la IA puede automatizar su atención al cliente"
+            />
+          </label>
+
+          <label className="field">
+            <span>Número de destinatarios (máximo 10)</span>
+            <input
+              className="input" type="number" min="1" max="10"
+              value={limite} onChange={e => setLimite(Math.min(10, Math.max(1, Number(e.target.value) || 1)))}
+            />
+          </label>
+
+          {err && <div style={{ color: 'var(--coral)', fontSize: 13, marginBottom: 14 }}>{err}</div>}
+
+          <button className="btn btn-primary" onClick={lanzar} disabled={enviando || !tema.trim()} style={{ width: '100%' }}>
+            {enviando ? 'Lanzando campaña…' : `Lanzar a ${limite} cliente${limite > 1 ? 's' : ''}`}
+          </button>
+
+          {resultado && (
+            <div className="card" style={{ padding: 16, marginTop: 16, background: 'var(--lime-dim)', border: '1px solid var(--lime-glow)' }}>
+              <div style={{ fontWeight: 600, color: 'var(--lime)', marginBottom: 4 }}>✓ Campaña enviada al motor de Valeria</div>
+              <div style={{ fontSize: 13, color: 'var(--mist)' }}>
+                Valeria está procesando los envíos uno a uno con pausas. Te llegará un resumen por WhatsApp al terminar.
+              </div>
+            </div>
+          )}
+        </div>
+
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+          <div className="card" style={{ padding: 20 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
+              <span className="pill" style={{ background: enHorario ? 'rgba(37,211,102,0.15)' : 'rgba(255,184,77,0.15)', color: enHorario ? 'var(--whatsapp)' : 'var(--amber)' }}>
+                {enHorario ? '● En horario' : '○ Fuera de horario'}
+              </span>
+            </div>
+            <p style={{ fontSize: 13, color: 'var(--mist)', lineHeight: 1.6 }}>
+              Las campañas solo se envían entre <strong style={{ color: 'var(--ink)' }}>8am y 8pm</strong> hora Colombia. Si lanzas fuera de ese rango, Valeria no enviará.
+            </p>
+          </div>
+
+          <div className="card" style={{ padding: 20 }}>
+            <h4 style={{ fontSize: 14, marginBottom: 12 }}>Protecciones activas</h4>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10, fontSize: 13, color: 'var(--mist)' }}>
+              <div style={{ display: 'flex', gap: 8 }}><span style={{ color: 'var(--lime)' }}>✓</span> Mensaje único por cliente (sin spam)</div>
+              <div style={{ display: 'flex', gap: 8 }}><span style={{ color: 'var(--lime)' }}>✓</span> Pausa de 40-90s entre cada envío</div>
+              <div style={{ display: 'flex', gap: 8 }}><span style={{ color: 'var(--lime)' }}>✓</span> Techo de 10 destinatarios por campaña</div>
+              <div style={{ display: 'flex', gap: 8 }}><span style={{ color: 'var(--lime)' }}>✓</span> Solo en horario comercial</div>
+            </div>
+          </div>
+
+          <div className="card" style={{ padding: 20 }}>
+            <div style={{ fontSize: 12, color: 'var(--mist)', marginBottom: 4 }}>Clientes en tu cartera</div>
+            <div className="font-display" style={{ fontSize: 28, fontWeight: 800 }}>{clientes.length}</div>
+            <div style={{ fontSize: 12, color: 'var(--mist)' }}>disponibles para contactar</div>
+          </div>
+        </div>
+      </div>
+    </>
+  );
+}
+
 /* ───────────── Seguimientos ───────────── */
 function Seguimientos() {
   const [items, setItems] = useState([]);
@@ -743,6 +846,7 @@ const NAV = [
   { id: 'chats', label: 'Conversaciones', ico: '✦' },
   { id: 'ia', label: 'Inteligencia', ico: '✶' },
   { id: 'seguimientos', label: 'Seguimientos', ico: '◉' },
+  { id: 'campanas', label: 'Campañas', ico: '➤' },
 ];
 
 export default function App() {
@@ -780,6 +884,7 @@ export default function App() {
         {vista === 'chats' && <WhatsAppWeb />}
         {vista === 'ia' && <Inteligencia />}
         {vista === 'seguimientos' && <Seguimientos />}
+        {vista === 'campanas' && <Campanas />}
       </main>
     </div>
   );
